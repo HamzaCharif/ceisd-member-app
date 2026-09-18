@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "postinstall": "prisma generate",
     "dev:api": "ts-node-dev --respawn --transpile-only --project tsconfig.api.json api/server.ts",
     "typecheck:api": "tsc -p tsconfig.api.json --noEmit",
     "smoke": "ts-node-dev --transpile-only --project tsconfig.api.json scripts/smoke.ts",
