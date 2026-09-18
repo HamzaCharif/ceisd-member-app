@@ -1,0 +1,385 @@
+// CEISD Member App — Prisma Schema
+// Version: 1.0
+//
+// Model relationships overview:
+//   User ──< UserProfile (1:1)
+//   User ──< EmbeddingVector (1:many)
+//   User ──< EventAttendance, EventRsvp, TaskCompletion, FormSubmission
+//   User ──< GamificationRecord, UserStage (1:1)
+//   User ──< Match (userId1 / userId2), MentorBooking (mentor / member)
+//   User ──< NoticePost (author), AdminLog (admin)
+//   Event ──< EventAttendance, EventRsvp, Task (linkedEvent)
+//   Task ──< TaskCompletion
+//   Form ──< FormSubmission
+//
+// pgvector: EmbeddingVector.vector uses Unsupported("vector(1536)")
+// Enable via migration: CREATE EXTENSION IF NOT EXISTS vector;
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions", "driverAdapters"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum UserRole {
+  MEMBER
+  ADMIN
+}
+
+enum YearOfStudy {
+  FRESHMAN
+  SOPHOMORE
+  JUNIOR
+  SENIOR
+  GRADUATE
+}
+
+enum AttendanceMethod {
+  QR
+  MANUAL
+}
+
+enum TaskType {
+  WORKSHOP
+  FORM
+  SUBMISSION
+  MEETING
+}
+
+enum TaskStatus {
+  PENDING
+  COMPLETED
+}
+
+enum CompletionMethod {
+  AUTO_ATTENDANCE
+  FORM_SUBMISSION
+  MANUAL_APPROVAL
+}
+
+enum StageType {
+  SPARK
+  SHAPE
+  SCALE
+  MENTOR
+}
+
+enum MatchStatus {
+  PENDING    // suggested by the AI, nobody has acted
+  REQUESTED  // one side sent a connection invitation
+  CONNECTED  // the other side accepted
+  SAVED
+  REJECTED
+}
+
+enum NotificationType {
+  MATCH_REQUEST
+  MATCH_ACCEPTED
+  TASK_ASSIGNED
+  EVENT_REMINDER
+  ANNOUNCEMENT
+  MENTOR_BOOKING
+  POINTS_AWARDED
+  SYSTEM
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+// ─────────────────────────────────────────────
+// MODELS
+// ─────────────────────────────────────────────
+
+model User {
+  id             String      @id @default(cuid())
+  email          String      @unique
+  name           String
+  phone          String?
+  role           UserRole    @default(MEMBER)
+  college        String?
+  yearOfStudy    YearOfStudy?
+  graduationYear Int?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  // Relations
+  profile             UserProfile?
+  embeddingVectors    EmbeddingVector[]
+  announcements       Announcement[]      @relation("AnnouncementCreator")
+  eventsCreated       Event[]             @relation("EventCreator")
+  eventRsvps          EventRsvp[]
+  eventAttendances    EventAttendance[]
+  noticePosts         NoticePost[]        @relation("PostAuthor")
+  tasksCreated        Task[]              @relation("TaskCreator")
+  tasksAssigned       Task[]              @relation("TaskAssignee")
+  taskCompletions     TaskCompletion[]    @relation("TaskCompleter")
+  taskApprovals       TaskCompletion[]    @relation("TaskApprover")
+  formsCreated        Form[]              @relation("FormCreator")
+  formsAssigned       Form[]              @relation("FormAssignee")
+  formSubmissions     FormSubmission[]
+  gamificationRecords GamificationRecord[]
+  userStage           UserStage?
+  matchesAs1          Match[]             @relation("Match1")
+  matchesAs2          Match[]             @relation("Match2")
+  mentorBookings      MentorBooking[]     @relation("Mentor")
+  memberBookings      MentorBooking[]     @relation("Member")
+  adminLogs           AdminLog[]
+  notifications       Notification[]
+}
+
+model UserProfile {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skillRatings       Json     @default("{}")
+  motivation         Json     @default("{}")
+  problemInterests   Json     @default("{}")
+  founderSignals     Json     @default("{}")
+  collaborationPrefs Json     @default("{}")
+  engagementPrefs    Json     @default("{}")
+  aiProfileAnswers   Json     @default("{}")
+  commitmentScore    Int      @default(5)
+  needsEmbedding     Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model EmbeddingVector {
+  id        String                      @id @default(cuid())
+  userId    String
+  user      User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vector    Unsupported("vector(1536)")
+  createdAt DateTime                    @default(now())
+}
+
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String
+  categoryTag String
+  description String
+  ctaLabel    String
+  ctaUrl      String?
+  createdById String
+  createdBy   User     @relation("AnnouncementCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Event {
+  id                  String   @id @default(cuid())
+  title               String
+  description         String
+  bannerImage         String?
+  dateTime            DateTime
+  location            String
+  totalSeats          Int
+  rsvpCount           Int      @default(0)
+  speakerName         String?
+  speakerRole         String?
+  speakerAvatar       String?
+  pointsForAttendance Int      @default(50)
+  createdById         String
+  createdBy           User     @relation("EventCreator", fields: [createdById], references: [id])
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  rsvps       EventRsvp[]
+  attendances EventAttendance[]
+  linkedTasks Task[]
+}
+
+model EventRsvp {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId])
+}
+
+model EventAttendance {
+  id         String           @id @default(cuid())
+  eventId    String
+  event      Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attendedAt DateTime         @default(now())
+  method     AttendanceMethod
+
+  @@unique([eventId, userId])
+}
+
+model NoticePost {
+  id              String   @id @default(cuid())
+  title           String
+  description     String
+  tags            Json     @default("[]")
+  skillLabels     Json     @default("[]")
+  projectCategory String?
+  authorId        String
+  author          User     @relation("PostAuthor", fields: [authorId], references: [id])
+  isPinned        Boolean  @default(false)
+  isFlagged       Boolean  @default(false)
+  openToMatches   Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  editDeadline    DateTime
+  updatedAt       DateTime @updatedAt
+}
+
+model Task {
+  id               String           @id @default(cuid())
+  title            String
+  description      String
+  type             TaskType
+  assignedToUserId String?
+  assignedToUser   User?            @relation("TaskAssignee", fields: [assignedToUserId], references: [id])
+  assignedToRole   UserRole?
+  assignedToAll    Boolean          @default(false)
+  deadline         DateTime
+  status           TaskStatus       @default(PENDING)
+  completionMethod CompletionMethod
+  linkedEventId    String?
+  linkedEvent      Event?           @relation(fields: [linkedEventId], references: [id])
+  createdById      String
+  createdBy        User             @relation("TaskCreator", fields: [createdById], references: [id])
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  completions TaskCompletion[]
+}
+
+model TaskCompletion {
+  id          String           @id @default(cuid())
+  taskId      String
+  task        Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User             @relation("TaskCompleter", fields: [userId], references: [id])
+  completedAt DateTime         @default(now())
+  method      CompletionMethod
+  approvedById String?
+  approvedBy  User?            @relation("TaskApprover", fields: [approvedById], references: [id])
+
+  @@unique([taskId, userId])
+}
+
+model Form {
+  id               String   @id @default(cuid())
+  title            String
+  schema           Json
+  assignedToUserId String?
+  assignedToUser   User?    @relation("FormAssignee", fields: [assignedToUserId], references: [id])
+  assignedToRole   UserRole?
+  assignedToAll    Boolean  @default(false)
+  createdById      String
+  createdBy        User     @relation("FormCreator", fields: [createdById], references: [id])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  submissions FormSubmission[]
+}
+
+model FormSubmission {
+  id          String   @id @default(cuid())
+  formId      String
+  form        Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  answers     Json
+  submittedAt DateTime @default(now())
+
+  @@unique([formId, userId])
+}
+
+model GamificationRecord {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  points      Int
+  reason      String
+  referenceId String?  // e.g. eventId / taskId / matchId — makes awards idempotent per thing
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, reason, referenceId])
+}
+
+model UserStage {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stage       StageType @default(SPARK)
+  totalPoints Int       @default(0)
+  updatedAt   DateTime  @updatedAt
+}
+
+model Match {
+  id                 String      @id @default(cuid())
+  userId1            String
+  user1              User        @relation("Match1", fields: [userId1], references: [id])
+  userId2            String
+  user2              User        @relation("Match2", fields: [userId2], references: [id])
+  compatibilityScore Float
+  explanation        String
+  status             MatchStatus @default(PENDING)
+  requestedById      String?     // who clicked Connect (null until REQUESTED)
+  requestedAt        DateTime?
+  connectedAt        DateTime?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  @@unique([userId1, userId2])
+  @@index([userId2, status])
+}
+
+// In-app inbox. Members poll /api/notifications; badge = unread count.
+// Push delivery (Expo push tokens) hangs off the same rows later.
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String
+  data      Json?            // { matchId, eventId, taskId, ... } for deep-linking
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt, createdAt])
+}
+
+model MentorBooking {
+  id          String        @id @default(cuid())
+  mentorId    String
+  mentor      User          @relation("Mentor", fields: [mentorId], references: [id])
+  memberId    String
+  member      User          @relation("Member", fields: [memberId], references: [id])
+  requestedAt DateTime      @default(now())
+  scheduledAt DateTime?
+  status      BookingStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime      @default(now())
+}
+
+model AdminLog {
+  id         String   @id @default(cuid())
+  adminId    String
+  admin      User     @relation(fields: [adminId], references: [id])
+  action     String
+  targetId   String
+  targetType String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+}

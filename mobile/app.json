@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "CEISD Member App",
+    "slug": "ceisd-member-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "ae.aus.ceisd.memberapp"
+    },
+    "android": {
+      "package": "ae.aus.ceisd.memberapp"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-camera",
+      "expo-calendar",
+      "expo-asset"
+    ]
+  }
+}

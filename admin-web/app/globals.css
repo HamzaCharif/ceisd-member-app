@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────
+   CEISD Admin — design tokens
+   Direction: a well-set ledger. Warm paper, ink, one green.
+   Hairline rules over shadow boxes. Serif display for numbers.
+   ───────────────────────────────────────────────────────────── */
+:root {
+  --paper: #F7F5F0;
+  --paper-2: #FDFCFA;
+  --ink: #14213D;
+  --ink-2: #3B4763;
+  --ink-3: #6E7891;
+  --ink-4: #A4ABBD;
+  --rule: #E6E2D9;
+  --rule-strong: #D3CEC2;
+  --green: #1F8F6C;
+  --green-ink: #145C46;
+  --green-soft: #E4F3EC;
+  --amber: #B7791F;
+  --amber-soft: #F8EED8;
+  --red: #B42318;
+  --red-soft: #F9E3E0;
+
+  --font-display: 'Fraunces', 'Iowan Old Style', 'Georgia', serif;
+  --font-body: 'Instrument Sans', 'Helvetica Neue', Arial, sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-feature-settings: 'ss01', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* faint paper grain so large empty areas don't read as flat */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.font-display { font-family: var(--font-display); font-variation-settings: 'opsz' 72, 'SOFT' 30; }
+.tnum { font-variant-numeric: tabular-nums lining-nums; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  font-weight: 600; color: var(--ink-3);
+}
+
+/* Ledger surfaces */
+.ledger {
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+}
+.ledger-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 18px 22px 12px;
+  border-bottom: 1px solid var(--rule);
+}
+.ledger-body { padding: 18px 22px 22px; }
+
+.rule { border-color: var(--rule); }
+
+/* Data table */
+.ledger-table { width: 100%; border-collapse: collapse; }
+.ledger-table th {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600;
+  color: var(--ink-3); text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--rule-strong);
+}
+.ledger-table td { padding: 12px 12px; border-bottom: 1px solid var(--rule); font-size: 14px; vertical-align: middle; }
+.ledger-table tr:last-child td { border-bottom: 0; }
+.ledger-table td.num, .ledger-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.ledger-table tbody tr { transition: background-color 160ms ease; }
+.ledger-table tbody tr:hover { background: rgba(31, 143, 108, 0.04); }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: 10px;
+  font-size: 14px; font-weight: 600; transition: transform 120ms ease, background-color 160ms ease, box-shadow 160ms ease; }
+.btn:active { transform: translateY(1px) scale(0.99); }
+.btn:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.btn-primary { background: var(--green); color: #fff; box-shadow: 0 1px 0 rgba(20,33,61,0.08), 0 6px 16px -8px rgba(31,143,108,0.5); }
+.btn-primary:hover { background: var(--green-ink); }
+.btn-ghost { background: transparent; color: var(--ink-2); border: 1px solid var(--rule-strong); }
+.btn-ghost:hover { background: var(--paper); }
+
+/* Inputs */
+.input { height: 40px; width: 100%; padding: 0 12px; border-radius: 10px; background: #fff; border: 1px solid var(--rule-strong);
+  font-size: 14px; color: var(--ink); transition: border-color 160ms ease, box-shadow 160ms ease; }
+.input:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(31,143,108,0.15); }
+
+/* Skeleton */
+.skeleton { position: relative; overflow: hidden; background: var(--rule); border-radius: 6px; }
+.skeleton::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent); animation: shimmer 1.4s infinite; }
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+
+/* Page-load reveal */
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.rise { animation: rise 420ms cubic-bezier(.2,.7,.2,1) both; }
+.rise-1 { animation-delay: 40ms; } .rise-2 { animation-delay: 90ms; } .rise-3 { animation-delay: 140ms; }
+.rise-4 { animation-delay: 190ms; } .rise-5 { animation-delay: 240ms; } .rise-6 { animation-delay: 290ms; }
+@media (prefers-reduced-motion: reduce) { .rise { animation: none; } .skeleton::after { animation: none; } }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--rule-strong); border-radius: 4px; }
